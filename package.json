@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "vercel-build": "echo 'No build required'"
+    "vercel-build": "echo 'No build step required for API-only project'"
   },
   "dependencies": {
     "node-fetch": "^3.3.2"
