@@ -1,5 +1,6 @@
+// File: /api/yodeck-sync.js
+
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -16,36 +17,22 @@ export default async function handler(req, res) {
   try {
     const { businessId, businessName, content } = req.body;
 
-    console.log("Incoming Yodeck Sync:", { businessId, businessName, content });
-
-    const results = [];
-
-    for (const item of content) {
-      try {
-        // Simulate Yodeck upload – replace this with actual API call later
-        results.push({
-          contentId: item.id,
-          status: "success",
-          yodeckMediaId: `mock-id-${Date.now()}`
-        });
-      } catch (err) {
-        results.push({
-          contentId: item.id,
-          status: "error",
-          error: err.message
-        });
-      }
+    if (!businessId || !content || !Array.isArray(content)) {
+      return res.status(400).json({ success: false, message: "Invalid payload" });
     }
+
+    const results = content.map((item) => ({
+      contentId: item.id,
+      yodeckMediaId: `yodeck-${Date.now()}`,
+      status: "mocked-success"
+    }));
 
     return res.status(200).json({
       success: true,
-      details: {
-        businessId,
-        syncedCount: results.filter(r => r.status === "success").length,
-        syncedItems: results
-      }
+      syncedCount: results.length,
+      syncedItems: results,
     });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 }
