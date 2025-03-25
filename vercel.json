@@ -1,9 +1,14 @@
 {
   "version": 2,
-  "builds": [
+  "functions": {
+    "api/yodeck-sync.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "routes": [
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "src": "/api/yodeck-sync",
+      "dest": "api/yodeck-sync.js"
     }
   ]
 }
