@@ -12,20 +12,50 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { businessId, businessName, content } = req.body;
+  const uploadToYodeck = async (item) => {
+  const { file_url, title, content_type } = item;
 
-    // Temporary mock response
-    return res.status(200).json({
-      success: true,
-      details: {
-        syncedItems: content.map(c => ({
-          contentId: c.id,
-          status: "success",
-          yodeckMediaId: `mock-${Date.now()}`
-        }))
-      }
+  const yodeckResponse = await fetch('https://api.yodeck.com/media/', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Token ContentmanagerAPI:zVNM66cm5DEvytjlKoQeebWkVeybcoyrVoP-I_CHV47SQhPjVB3D-6EtAdByBEKM',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: title,
+      type: content_type === "video" ? "video" : "image", // adjust based on file type
+      file_url: file_url,
+      duration: item.duration || 30,
+      tags: [`uploaded-via-yz`],
+      description: `Uploaded from YZ Ad Club`
+    })
+  });
+
+  if (!yodeckResponse.ok) {
+    const err = await yodeckResponse.text();
+    throw new Error(`Yodeck API Error: ${err}`);
+  }
+
+  return await yodeckResponse.json();
+};
+
+    const results = [];
+
+for (const item of content) {
+  try {
+    const media = await uploadToYodeck(item);
+    results.push({
+      contentId: item.id,
+      yodeckMediaId: media.id,
+      status: "success"
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    results.push({
+      contentId: item.id,
+      status: "error",
+      error: error.message
+    });
   }
+}
+
 }
