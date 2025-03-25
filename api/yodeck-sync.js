@@ -1,18 +1,12 @@
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
-  );
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
+  // Handle preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -24,68 +18,56 @@ export default async function handler(req, res) {
   try {
     const { businessId, businessName, content } = req.body;
 
-    if (!businessId || !Array.isArray(content)) {
-      return res.status(400).json({ success: false, message: 'Invalid payload structure' });
+    const label = process.env.YODECK_API_LABEL;
+    const token = process.env.YODECK_API_TOKEN;
+
+    if (!label || !token) {
+      return res.status(500).json({ success: false, message: "Missing Yodeck credentials" });
     }
 
-    const YODECK_API_LABEL = process.env.YODECK_API_LABEL || 'ContentmanagerAPI';
-    const YODECK_API_TOKEN = process.env.YODECK_API_TOKEN;
-
-    if (!YODECK_API_TOKEN) {
-      return res.status(500).json({ success: false, message: 'Missing Yodeck API token' });
-    }
-
+    const authHeader = `Token ${label}:${token}`;
     const results = [];
 
     for (const item of content) {
-      const mediaTypeMap = {
-        image: 'image',
-        video: 'video',
-        pdf: 'pdf',
-        promotion: 'image',
-        advertisement: 'image'
-      };
-
-      const media_type = mediaTypeMap[item.content_type] || 'image';
-
-      const payload = {
-        title: item.title || `Media from ${businessName}`,
-        media_type,
-        source_url: item.file_url
-      };
-
       try {
+        const mediaPayload = {
+          title: item.title || "Untitled",
+          media_type: item.content_type || "image",
+          source_url: item.file_url,
+          description: item.description || "",
+          tags: [businessName || "YZ Club"]
+        };
+
         const yodeckRes = await fetch('https://api.yodeck.com/media/', {
           method: 'POST',
           headers: {
-            Authorization: `Token ${YODECK_API_LABEL}:${YODECK_API_TOKEN}`,
+            'Authorization': authHeader,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(mediaPayload)
         });
 
-        const yodeckData = await yodeckRes.json();
+        const data = await yodeckRes.json();
 
-        if (yodeckRes.ok && yodeckData.id) {
+        if (!yodeckRes.ok) {
           results.push({
             contentId: item.id,
-            status: 'success',
-            yodeckId: yodeckData.id,
-            yodeckTitle: yodeckData.title
+            status: 'error',
+            error: data?.detail || data?.message || 'Unknown Yodeck error'
           });
         } else {
           results.push({
             contentId: item.id,
-            status: 'error',
-            error: yodeckData?.detail || 'Upload failed',
-            debug: yodeckData
+            status: 'success',
+            yodeckId: data.id,
+            name: data.name
           });
         }
-      } catch (err) {
+      } catch (error) {
         results.push({
           contentId: item.id,
           status: 'error',
-          error: err.message
+          error: error.message
         });
       }
     }
@@ -97,10 +79,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Unexpected error in yodeck-sync:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    console.error("Yodeck Sync Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 }
