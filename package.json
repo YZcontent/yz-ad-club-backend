@@ -1,0 +1,8 @@
+{
+  "name": "yz-ad-club-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "vercel-build": "echo 'No build step required for API-only project'"
+  }
+}
