@@ -1,10 +1,9 @@
 {
   "name": "yz-ad-club-backend",
   "version": "1.0.0",
-  "description": "Backend for syncing YZ Ad Club content with Yodeck",
   "type": "module",
   "scripts": {
-    "vercel-build": "echo 'No build step required'"
+    "vercel-build": "echo 'No build required'"
   },
   "dependencies": {
     "node-fetch": "^3.3.2"
