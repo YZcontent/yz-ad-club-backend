@@ -1,14 +1,15 @@
+// vercel.json
 {
   "version": 2,
   "functions": {
-    "api/yodeck-sync.js": {
+    "api/**/*.js": {
       "runtime": "nodejs18.x"
     }
   },
   "routes": [
     {
-      "src": "/api/yodeck-sync",
-      "dest": "api/yodeck-sync.js"
+      "src": "/api/(.*)",
+      "dest": "/api/$1.js"
     }
   ]
 }
