@@ -1,4 +1,5 @@
 export default function handler(req, res) {
+  res.status(200).json({ message: "Yodeck Sync API is active" );
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
