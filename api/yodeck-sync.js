@@ -1,10 +1,18 @@
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
+  );
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(200).end(); // CORS preflight
   }
 
   if (req.method !== 'POST') {
@@ -12,50 +20,69 @@ export default async function handler(req, res) {
   }
 
   try {
-  const uploadToYodeck = async (item) => {
-  const { file_url, title, content_type } = item;
+    const { businessId, businessName, content } = req.body;
 
-  const yodeckResponse = await fetch('https://api.yodeck.com/media/', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Token ContentmanagerAPI:zVNM66cm5DEvytjlKoQeebWkVeybcoyrVoP-I_CHV47SQhPjVB3D-6EtAdByBEKM',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      name: title,
-      type: content_type === "video" ? "video" : "image", // adjust based on file type
-      file_url: file_url,
-      duration: item.duration || 30,
-      tags: [`uploaded-via-yz`],
-      description: `Uploaded from YZ Ad Club`
-    })
-  });
+    if (!businessId || !Array.isArray(content)) {
+      return res.status(400).json({ success: false, message: 'Invalid payload structure' });
+    }
 
-  if (!yodeckResponse.ok) {
-    const err = await yodeckResponse.text();
-    throw new Error(`Yodeck API Error: ${err}`);
-  }
+    const YODECK_TOKEN_LABEL = process.env.YODECK_API_LABEL;
+    const YODECK_TOKEN_VALUE = process.env.YODECK_API_TOKEN;
 
-  return await yodeckResponse.json();
-};
+    if (!YODECK_TOKEN_LABEL || !YODECK_TOKEN_VALUE) {
+      return res.status(500).json({ success: false, message: 'Yodeck credentials not set' });
+    }
 
     const results = [];
 
-for (const item of content) {
-  try {
-    const media = await uploadToYodeck(item);
-    results.push({
-      contentId: item.id,
-      yodeckMediaId: media.id,
-      status: "success"
-    });
-  } catch (error) {
-    results.push({
-      contentId: item.id,
-      status: "error",
-      error: error.message
-    });
-  }
-}
+    for (const item of content) {
+      try {
+        const uploadResponse = await fetch('https://api.yodeck.com/media/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${YODECK_TOKEN_LABEL}:${YODECK_TOKEN_VALUE}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: item.title,
+            description: item.description || '',
+            file_url: item.file_url,
+            duration: item.duration || 30,
+            tags: [`business:${businessName}`, item.content_type],
+            layout: 'FULL_SCREEN', // or based on content_type
+            status: 'active'
+          })
+        });
 
+        const uploadResult = await uploadResponse.json();
+
+        if (!uploadResponse.ok) {
+          throw new Error(uploadResult.detail || 'Failed to upload content to Yodeck');
+        }
+
+        results.push({
+          contentId: item.id,
+          yodeckMediaId: uploadResult.id,
+          status: 'success'
+        });
+      } catch (error) {
+        results.push({
+          contentId: item.id,
+          status: 'error',
+          error: error.message
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Content synced to Yodeck',
+      syncedCount: results.filter(r => r.status === 'success').length,
+      results
+    });
+
+  } catch (error) {
+    console.error('Handler error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
 }
