@@ -5,7 +5,8 @@
   "scripts": {
     "vercel-build": "echo 'No build step required for API-only project'"
   },
-  "dependencies": {
+  "dependencies": {   
+    "form-data": "^4.0.0",
     "node-fetch": "^2.6.7"
   },
   "keywords": [],
