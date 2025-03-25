@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const FormData = require('form-data');
 
 module.exports = async function handler(req, res) {
   // CORS headers
@@ -40,21 +41,53 @@ module.exports = async function handler(req, res) {
 
   for (const item of content) {
     try {
-      const mediaPayload = {
-        title: item.title || "Untitled",
-        media_type: item.content_type || "image",
-        source_url: item.file_url,
-        description: item.description || "",
-        tags: [businessName || "YZ Club"]
-      };
+      const supportedTypes = ['image', 'video', 'web_page'];
+      const mediaType = item.content_type || 'image';
+
+      if (!supportedTypes.includes(mediaType)) {
+        results.push({
+          contentId: item.id,
+          status: 'error',
+          error: `Unsupported content_type: ${mediaType}`
+        });
+        continue;
+      }
+
+      const mediaTitle = item.title || 'Untitled';
+      const description = item.description || '';
+      const fileUrl = item.file_url;
+
+      // Download file
+      const fileResponse = await fetch(fileUrl);
+      if (!fileResponse.ok) {
+        results.push({
+          contentId: item.id,
+          status: 'error',
+          error: `Failed to download file: ${fileResponse.statusText}`
+        });
+        continue;
+      }
+
+      const buffer = await fileResponse.buffer();
+      const contentDisposition = fileResponse.headers.get('content-disposition');
+      const fileName =
+        contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || `${Date.now()}-upload`;
+
+      // Prepare FormData payload
+      const form = new FormData();
+      form.append('title', mediaTitle);
+      form.append('description', description);
+      form.append('media_type', mediaType);
+      form.append('tags', businessName || 'YZ Club');
+      form.append('upload', buffer, fileName);
 
       const yodeckRes = await fetch('https://api.yodeck.com/media/', {
         method: 'POST',
         headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/json'
+          Authorization: authHeader,
+          ...form.getHeaders()
         },
-        body: JSON.stringify(mediaPayload)
+        body: form
       });
 
       const data = await yodeckRes.json();
