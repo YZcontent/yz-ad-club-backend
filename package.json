@@ -1,7 +1,7 @@
 {
-  "name": "yz-ad-club",
+  "name": "yz-ad-club-backend",
   "version": "1.0.0",
-  "description": "YZ Ad Club backend for Vercel",
+  "description": "YZ Ad Club Vercel backend",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
