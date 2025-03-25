@@ -1,22 +1,14 @@
 export default async function handler(req, res) {
-  // Enable CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // Handle GET request to confirm the endpoint is live
-  if (req.method === 'GET') {
-    return res.status(200).json({ message: "Yodeck Sync API is working." });
-  }
-
-  // Handle POST request (for syncing content later)
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
@@ -24,38 +16,36 @@ export default async function handler(req, res) {
   try {
     const { businessId, businessName, content } = req.body;
 
-    console.log('Received sync request:', { businessId, businessName, content });
+    console.log("Incoming Yodeck Sync:", { businessId, businessName, content });
 
-    // Validate structure
-    if (!businessId || !Array.isArray(content)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid payload structure"
-      });
+    const results = [];
+
+    for (const item of content) {
+      try {
+        // Simulate Yodeck upload – replace this with actual API call later
+        results.push({
+          contentId: item.id,
+          status: "success",
+          yodeckMediaId: `mock-id-${Date.now()}`
+        });
+      } catch (err) {
+        results.push({
+          contentId: item.id,
+          status: "error",
+          error: err.message
+        });
+      }
     }
-
-    // Simulate syncing content to Yodeck (for now)
-    const results = content.map(item => ({
-      contentId: item.id,
-      yodeckMediaId: `yodeck-${Date.now()}`,
-      status: "success"
-    }));
 
     return res.status(200).json({
       success: true,
       details: {
         businessId,
-        businessName,
-        syncedCount: results.length,
+        syncedCount: results.filter(r => r.status === "success").length,
         syncedItems: results
       }
     });
-
   } catch (error) {
-    console.error('Yodeck sync error:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 }
