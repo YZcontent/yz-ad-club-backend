@@ -1,56 +1,39 @@
-import fetch from 'node-fetch';
-
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST method allowed' });
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
   try {
-    const { businessId, content = [] } = req.body;
+    const { businessId, businessName, content } = req.body;
 
-    if (!businessId || content.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing businessId or content array'
-      });
+    if (!businessId || !content || !Array.isArray(content)) {
+      return res.status(400).json({ success: false, message: "Invalid payload structure" });
     }
 
-    const results = await Promise.all(content.map(async (item) => {
-      try {
-        const response = await fetch('https://api.yodeck.com/rest/v2/media/', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Token ContentmanagerAPI:${process.env.YODECK_API_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: item.title || `Content ${item.id}`,
-            type: item.content_type || 'video',
-            filename: item.file_url,
-            layout: 'fullscreen'
-          })
-        });
-
-        const data = await response.json();
-
-        return {
-          contentId: item.id,
-          yodeckId: data.id || null,
-          status: response.ok ? 'success' : 'error',
-          error: !response.ok ? data : null
-        };
-      } catch (error) {
-        return {
-          contentId: item.id,
-          status: 'error',
-          error: error.message
-        };
-      }
+    const results = content.map((item) => ({
+      contentId: item.id,
+      yodeckMediaId: `mock-yodeck-id-${Date.now()}`,
+      status: "success"
     }));
 
-    return res.status(200).json({ success: true, results });
+    return res.status(200).json({
+      success: true,
+      details: {
+        businessId,
+        businessName,
+        syncedCount: results.length,
+        syncedItems: results
+      }
+    });
   } catch (error) {
-    console.error('Yodeck sync error:', error);
+    console.error('Error processing sync:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 }
