@@ -13,13 +13,13 @@ module.exports = async (req, res) => {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
-  let body = '';
+  let rawBody = '';
   try {
-    // Parse raw stream from Vercel serverless
+    // Read and parse body from stream
     for await (const chunk of req) {
-      body += chunk;
+      rawBody += chunk;
     }
-    req.body = JSON.parse(body);
+    req.body = JSON.parse(rawBody);
   } catch (error) {
     return res.status(400).json({ success: false, message: 'Invalid JSON in request body' });
   }
