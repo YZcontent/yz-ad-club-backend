@@ -1,43 +1,30 @@
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Authorization, Date, X-Api-Version');
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-  res.status(200).end();
-  return;
-}
-
+    return res.status(200).end();
   }
 
-  try {
-    const { businessId, businessName, content } = req.body;
-
-    if (!businessId || !content || !Array.isArray(content)) {
-      return res.status(400).json({ success: false, message: "Invalid payload structure" });
-    }
-
-    const results = content.map((item) => ({
-      contentId: item.id,
-      yodeckMediaId: `mock-yodeck-id-${Date.now()}`,
-      status: "success"
-    }));
-
-    return res.status(200).json({
-      success: true,
-      details: {
-        businessId,
-        businessName,
-        syncedCount: results.length,
-        syncedItems: results
-      }
-    });
-  } catch (error) {
-    console.error('Error processing sync:', error);
-    return res.status(500).json({ success: false, message: error.message });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
+
+  const { businessId, businessName, content } = req.body;
+
+  if (!businessId || !content) {
+    return res.status(400).json({ message: 'Invalid Payload' });
+  }
+
+  console.log('Received sync:', businessId, content);
+
+  // Mock response
+  return res.status(200).json({
+    success: true,
+    message: 'Yodeck sync simulated',
+    businessId,
+    syncedCount: content.length,
+    content
+  });
 }
